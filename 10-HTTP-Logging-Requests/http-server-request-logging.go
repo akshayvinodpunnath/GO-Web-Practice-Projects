@@ -41,19 +41,31 @@ var PathVariableHandler = http.HandlerFunc(
 	},
 )
 
+var ExtraPostRequestHandler = http.HandlerFunc(
+	func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("It's a Extra Post Request!"))
+	},
+)
+
 func main() {
 	router := mux.NewRouter()
 
+	//os.Stdout - passed a standard output stream as a writer to it,
+	//which means we are simply asking to log every request with the URL path / on the console in Apache Common Log Format
 	router.Handle("/", handlers.LoggingHandler(os.Stdout, http.HandlerFunc(GetRequestHandler))).Methods("GET")
 
+	//create a logfile server.log
 	logFile, err := os.OpenFile("server.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatal("error starting http server : ", err)
+		log.Fatal("error starting http server : ", err.Error())
 		return
 	}
 
+	//LoggingHandler for logging HTTP requests in the Apache Common Log Format.
 	router.Handle("/post", handlers.LoggingHandler(logFile, PostRequestHandler)).Methods("POST")
-	//using same handler function for GET and PUT request.
+
+	//CombinedLoggingHandler for logging HTTP requests in the Apache Combined Log Format commonly used by both Apache and nginx.
+	router.Handle("/extraPost", handlers.CombinedLoggingHandler(logFile, ExtraPostRequestHandler)).Methods("POST")
 	router.Handle("/hello/{name}", handlers.CombinedLoggingHandler(logFile, PathVariableHandler)).Methods("GET", "PUT")
 
 	fmt.Println("Starting Server at port :", CONNECT_PORT)
